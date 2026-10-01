@@ -665,7 +665,7 @@ def fail_closed_git_grep_unavailable(c):
     with open(os.path.join(fake, "git"), "w") as fh:
         fh.write('#!/bin/sh\nfor a in "$@"; do [ "$a" = grep ] && { echo "fatal: cannot use Perl-compatible '
                  'regexes when not compiled with USE_LIBPCRE" >&2; exit 128; }; done\nexec %s "$@"\n' % real)
-    os.chmod(os.path.join(fake, "git"), 0o755)
+    os.chmod(os.path.join(fake, "git"), 0o700)
     r = c.repo({"a.txt": "x\n"})
     res = c.run("scan-payload", r, env={"PATH": fake + os.pathsep + c.env.get("PATH", "")}).expect(2)
     assert "PCRE" in res.out
