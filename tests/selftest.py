@@ -1828,7 +1828,8 @@ def runner_regex_is_not_redos(c):
     if lib not in sys.path:
         sys.path.insert(0, lib)
     from guard import supply
-    for bad in ["npm " + "-- -" * 4000, "npm --" + " -- --" * 4000, "npm " + "-a -" * 4000 + "!"]:
+    for bad in ["npm " + "-- -" * 4000, "npm --" + " -- --" * 4000, "npm " + "-a -" * 4000 + "!",
+                "npm -0" + " -0 -0" * 4000 + "!", "npm --x" + " --x v" * 4000 + "!"]:
         t0 = time.perf_counter()
         supply._RX_RUNNER.search(bad)
         dt = time.perf_counter() - t0
