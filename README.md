@@ -52,17 +52,10 @@ The action prints each tool's report with GitHub workflow-command processing sto
 from the scanned repository cannot inject `::commands::`. It then emits one `::error` annotation
 per finding and writes a summary table to the job summary.
 
-## Access
-
-This repository is private. Workflows in the organization's private repositories can use the
-action because Settings -> Actions -> General -> Access allows repositories in the organization.
-A public repository, or a build that is not GitHub Actions, fetches the pinned commit with a
-read-only deploy key instead (see below).
-
 ## Run it locally
 
 Consuming repositories keep no copy of the guard. To run the checks by hand at the commit your
-repository pins (the fetch uses your own Git credentials):
+repository pins:
 
 ```bash
 sha=<the 40-hex commit your repository pins>
@@ -74,21 +67,18 @@ git -C "$g" checkout -q FETCH_HEAD
 bash "$g/bin/self-test" && bash "$g/bin/scan-payload" --repo-dir . && bash "$g/bin/supply-chain-check" --repo-dir .
 ```
 
-## Public repositories and non-Actions builds
+## Builds outside GitHub Actions
 
-GitHub does not let a public repository use an action from a private one, and build services
-outside GitHub Actions cannot use actions at all. Both fetch the pinned commit with a read-only
-deploy key, one key per consumer so each can be revoked on its own:
+A build service that cannot use actions (AWS Amplify, for example) fetches the pinned commit over
+HTTPS, verifies it, and runs the tools before it installs anything. A failed fetch or a different
+commit must fail the build:
 
-- **GitHub Actions in a public repository**: a local composite action checks this repository out
-  at the pinned SHA with `actions/checkout` (`ssh-key:` from a secret, `persist-credentials:
-  false`) into a path inside the workspace, verifies `HEAD`, then runs it with `uses: ./<path>`.
-  Set the same secret for Dependabot. Pull requests from forks get no secrets, so their check
-  fails closed.
-- **Other builds**: fetch the pinned SHA over SSH with the deploy key, against GitHub's published
-  host key and with `StrictHostKeyChecking=yes`, verify `HEAD`, delete the key, then run
-  `bin/scan-payload --repo-dir .` and `bin/supply-chain-check --repo-dir .` before installing
-  anything. A missing key or a failed fetch must fail the build.
+```bash
+rm -rf /tmp/scg && git init -q /tmp/scg
+GIT_CONFIG_GLOBAL=/dev/null git -C /tmp/scg fetch -q --depth 1 https://github.com/testrelic-ai/supply-chain-guard.git "$sha"
+git -C /tmp/scg checkout -q FETCH_HEAD && test "$(git -C /tmp/scg rev-parse HEAD)" = "$sha"
+bash /tmp/scg/bin/scan-payload --repo-dir . && bash /tmp/scg/bin/supply-chain-check --repo-dir .
+```
 
 ## Exit status and output
 
